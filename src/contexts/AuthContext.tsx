@@ -69,21 +69,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         navigate('/CreateUser');
 
-        return { success, data: 'Cadastro Feito com Sucesso', error: null };
+        return { success, data: 'Login feito com Sucesso', error: null };
       } catch (error) {
         console.error(error);
 
-        return { success: false, data: null, error: 'Houve um erro interno' };
+        return { success: false, data: null, error: JSON.stringify('Houve um erro interno') };
       }
-    },
-    [navigate]
-  );
+    }, [navigate]);
 
   const logout = useCallback(async () => {
     try {
       const { data: { success, data, error } } = await api.put<ApiResponse<string | null>>(
-        '/auth/logout',
-        { id: user?.id },
+        '/auth/logout', { id: user?.id },
         {
           headers: {
             'x-access-token': tokens?.accessToken,
@@ -104,7 +101,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success, data: 'Deslogado com sucesso', error: null };
     } catch (error) {
       console.error(error);
-      return { success: false, data: null, error: 'Houve um erro interno' };
+      return { success: false, data: null, error: JSON.stringify('Houve um erro interno') };
+    }
+  }, [user, tokens]);
+
+  const updateUser = useCallback(async () => {
+    try {
+      const { data: { success, data, error } } = await api.post<ApiResponse<UserType | null>>
+        ('/users/getById', { id: user?.id }, {
+          headers: {
+            'x-access-token': tokens?.accessToken,
+          },
+        });
+
+      if (!success || data === null) {
+        return { success, data: null, error };
+      }
+
+      setUser(data);
+
+      sessionStorage.setItem('E-Ducar@auth', JSON.stringify({ user: data, tokens }));
+
+      Cookies.remove('E-Ducar@auth');
+
+      return { success, data: 'Usuario atualizado com sucesso', error: null };
+    } catch (error) {
+      console.error(error);
+
+      return { success: false, data: null, error: JSON.stringify('Houve um erro interno') };
     }
   }, [user, tokens]);
 
@@ -112,11 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       login,
       logout,
+      updateUser,
       user,
       tokens,
       isLoading,
     }),
-    [login, logout, user, tokens, isLoading]
+    [login, logout, updateUser, user, tokens, isLoading]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
