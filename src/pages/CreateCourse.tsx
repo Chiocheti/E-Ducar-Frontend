@@ -6,7 +6,8 @@ import { AuthContext } from "../contexts/AuthContext";
 import { ApiResponse } from "../types/AuthContext.types";
 import { api } from "../services/api";
 import Navbar from "../components/Navbar";
-
+import CourseItem from "./CourseItem";
+import { CourseItemType } from "../types/Courses.types";
 
 const createCourseSchema = yup.object({
   userId: yup.string().required('Campo Obrigatório'),
@@ -15,7 +16,11 @@ const createCourseSchema = yup.object({
   text: yup.string().required('Campo Obrigatório'),
   required: yup.string(),
   duration: yup.string().required('Campo Obrigatório'),
-  price: yup.number().typeError('Campo Obrigatório').default(0).required('Campo Obrigatório'),
+  price: yup.number().
+    default(0).
+    typeError('O campo deve conter um numero valido').
+    positive('O preço deve ser um numero inteiro positivo').
+    required('Campo Obrigatório'),
 });
 
 type CreateCourseType = yup.InferType<typeof createCourseSchema>;
@@ -26,8 +31,11 @@ type TeacherList = {
 }
 
 export default function CreateCourse() {
-  const [teachers, setTeachers] = useState<TeacherList[]>([])
   const context = useContext(AuthContext);
+
+  const [teachers, setTeachers] = useState<TeacherList[]>([])
+  const [courses, setCourse] = useState<CourseItemType[]>([]);
+  const [image, setImage] = useState<File | null>(null);
 
   if (!context) {
     throw new Error('Falta contexto');
@@ -39,17 +47,35 @@ export default function CreateCourse() {
     async function getData() {
       try {
         const {
-          data: { success, data, error } }: { data: ApiResponse<TeacherList[]> } = await api.get('/users/getTeachers', {
+          data: { success: teacherSuccess, data: teacherData, error: teacherError } } =
+          await api.get<ApiResponse<TeacherList[]>>('/users/getTeachers', {
             headers: {
               'x-access-token': tokens?.accessToken,
             },
           });
 
-        if (!success || error) {
-          return console.log(error);
+        if (!teacherSuccess || teacherError) {
+          return console.log(teacherError);
         }
 
-        setTeachers(data);
+        setTeachers(teacherData);
+
+        const {
+          data: { success: coursesSuccess, data: coursesData, error: coursesError } } =
+          await api.get<ApiResponse<CourseItemType[]>>('/courses/getAll', {
+            headers: {
+              'x-access-token': tokens?.accessToken,
+            },
+          });
+
+        if (!coursesSuccess || coursesError) {
+          return console.log(coursesError);
+        }
+
+        console.log(coursesData);
+
+
+        setCourse(coursesData);
       } catch (error) {
         console.log(error);
       }
@@ -59,6 +85,7 @@ export default function CreateCourse() {
   }, [tokens])
 
   const {
+    reset,
     register,
     handleSubmit,
     formState: { errors }
@@ -75,8 +102,48 @@ export default function CreateCourse() {
     }
   });
 
-  async function createCourse(data: CreateCourseType) {
-    console.log(data);
+  async function createCourse(course: CreateCourseType) {
+    console.log(course);
+    if (!tokens) {
+      return console.log('Voce não tem permissão de cadastrar um Curso');
+    }
+
+    if (!image) {
+      return console.log('Voce precisa escolher uma imagem');
+    }
+
+    const formData = new FormData();
+    formData.append('course', JSON.stringify({ ...course, isVisible: false }));
+    formData.append('image', image);
+
+    console.log(image);
+
+
+    try {
+      const { data: { success, data, error } } = await api.post<ApiResponse<string | null>>
+        ('/courses/create', formData, {
+          headers: {
+            'x-access-token': tokens?.accessToken,
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+      if (success || !error) {
+        reset();
+        setImage(null);
+        return console.log(data);
+      }
+
+      return console.log(JSON.parse(error));
+    } catch (error) {
+      return console.log(error);
+    }
+  }
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files && e.target.files[0]) {
+      setImage(e.target.files[0])
+    }
   }
 
   return (
@@ -99,7 +166,7 @@ export default function CreateCourse() {
         <p style={{ color: "red" }}>{errors.text?.message}</p>
 
         <label htmlFor="repeatPassword">Digite o custo do curso:</label>
-        <input type="number" min={0} step="0.01" {...register('price')} />
+        <input type="number" step="0.01" {...register('price')} />
         <p style={{ color: "red" }}>{errors.price?.message}</p>
 
         <label htmlFor="type">Duração:</label>
@@ -121,9 +188,18 @@ export default function CreateCourse() {
         </select>
         <p style={{ color: "red" }}>{errors.duration?.message}</p>
 
+        <input type="file" accept="image/*" onChange={handleImageChange} />
+
         <button type='submit'>
           CADASTRAR
         </button>
+
+        {
+          courses.length ? (
+            <CourseItem course={courses[0]}></CourseItem>
+          ) : null
+        }
+
       </form>
     </div>
   )
