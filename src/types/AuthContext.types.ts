@@ -3,6 +3,7 @@ export type UserType = {
   username: string;
   name: string;
   isTeacher: boolean;
+  image: string;
 };
 
 export type TokensType = {
@@ -23,6 +24,11 @@ export type AuthContextType = {
     error: string | null;
   }>;
   logout: () => Promise<{
+    success: boolean;
+    data: string | null;
+    error: string | null;
+  }>;
+  updateUser: () => Promise<{
     success: boolean;
     data: string | null;
     error: string | null;

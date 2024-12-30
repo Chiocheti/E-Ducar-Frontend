@@ -1,7 +1,7 @@
 import { yupResolver } from '@hookform/resolvers/yup'
 import { useForm } from 'react-hook-form'
 import * as yup from 'yup'
-import { useContext } from 'react'
+import { useContext, useState } from 'react'
 import { AuthContext } from '../contexts/AuthContext'
 import { api } from '../services/api'
 import { ApiResponse } from '../types/AuthContext.types'
@@ -22,6 +22,9 @@ type CreateUserType = yup.InferType<typeof createUserSchema>
 export default function CreateUser() {
   const context = useContext(AuthContext);
 
+  const [image, setImage] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null);
+
   if (!context) {
     throw new Error('Falta contexto');
   };
@@ -31,6 +34,7 @@ export default function CreateUser() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
   } = useForm<CreateUserType>({
     resolver: yupResolver(createUserSchema),
@@ -40,28 +44,58 @@ export default function CreateUser() {
   })
 
   async function createUser(createUser: CreateUserType) {
+    if (!tokens) {
+      return console.log('Voce não tem permissão de cadastrar um Usuario');
+    }
+
+    if (!image) {
+      return console.log('Voce precisa escolher uma imagem');
+    }
+
     const user = {
       name: createUser.name,
-      // name: 123,
       username: createUser.username,
       password: createUser.password,
       isTeacher: createUser.isTeacher,
     }
 
+    const formData = new FormData();
+
+    formData.append('user', JSON.stringify(user));
+    formData.append('image', image);
+
     try {
-      const { data: { success, data, error } }: { data: ApiResponse<string | null> } = await api.post('/users/create', { user }, {
-        headers: {
-          'x-access-token': tokens?.accessToken,
-        },
-      });
+      const
+        { data: { success, data, error } } = await api.post<ApiResponse<string | null>>
+          ('/users/create', formData, {
+            headers: {
+              'x-access-token': tokens?.accessToken,
+              'Content-Type': 'multipart/form-data'
+            },
+          });
 
       if (success || !error) {
+        reset();
+        setImage(null);
+        setPreview(null);
         return console.log(data);
       }
 
       return console.log(JSON.parse(error));
     } catch (error) {
       return console.log(error);
+    }
+  }
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImage(file)
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   }
 
@@ -89,13 +123,17 @@ export default function CreateUser() {
         <p style={{ color: "red" }}>{errors.repeatPassword?.message}</p>
 
         <label htmlFor="type">É professor:</label>
-        {/* <select id="type" {...register("type")}>
-          <option value="">Selecione</option>
-          <option value={true}>ADMINISTRADOR</option>
-          <option value={false}>PROFESSOR</option>
-        </select> */}
         <input type="checkbox"  {...register("isTeacher")} />
         <p style={{ color: "red" }}>{errors.isTeacher?.message}</p>
+
+        <input type="file" accept="image/*" onChange={handleImageChange} />
+
+        {preview && (
+          <div>
+            <p>Pré-visualização da Imagem:</p>
+            <img src={preview} alt="Preview" width={'100px'} />
+          </div>
+        )}
 
         <button type='submit'>
           CADASTRAR

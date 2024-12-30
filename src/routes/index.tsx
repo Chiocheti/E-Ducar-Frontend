@@ -4,6 +4,7 @@ import Login from '../pages/Login'
 import CreateUser from '../pages/CreateUser'
 import Private from './Private'
 import CreateCourse from '../pages/CreateCourse'
+import UpdateUser from '../pages/UpdateUser'
 
 export default function Routes() {
 
@@ -16,6 +17,14 @@ export default function Routes() {
         element={
           <Private>
             <CreateUser />
+          </Private>
+        } />
+
+      <Route
+        path='/UpdateUser'
+        element={
+          <Private>
+            <UpdateUser />
           </Private>
         } />
 
