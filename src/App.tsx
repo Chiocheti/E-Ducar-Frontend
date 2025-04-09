@@ -1,16 +1,37 @@
-import { BrowserRouter as Router } from 'react-router-dom'
-import Routes from './routes'
-import { AuthProvider } from './contexts/AuthContext'
+import {
+  BrowserRouter as Router,
+  Routes as Switch,
+  Route,
+} from 'react-router-dom';
+import { UserProvider } from './contexts/UserContext';
+import UserRoutes from './routes/UserRoutes';
+import StudentRoutes from './routes/StudentRoutes';
+import { StudentProvider } from './contexts/StudentContext';
 
 function App() {
-
   return (
     <Router>
-      <AuthProvider>
-        <Routes />
-      </AuthProvider>
+      <Switch>
+        <Route
+          path="/student/*"
+          element={
+            <StudentProvider>
+              <StudentRoutes />
+            </StudentProvider>
+          }
+        />
+
+        <Route
+          path="/adm/*"
+          element={
+            <UserProvider>
+              <UserRoutes />
+            </UserProvider>
+          }
+        />
+      </Switch>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;
