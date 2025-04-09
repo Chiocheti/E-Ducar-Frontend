@@ -1,8 +1,10 @@
+import { CourseType } from './CourseTypes';
+
 export type UserType = {
   id: string;
-  name: string;
   username: string;
-  password: string;
+  name: string;
   isTeacher: boolean;
   image: string;
-}
+  courses?: CourseType[];
+};
