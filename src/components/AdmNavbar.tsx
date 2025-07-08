@@ -1,7 +1,6 @@
 import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../contexts/UserContext';
-import { returnImageLink } from '../utils/ReturnImageLink';
 
 export default function AdmNavbar() {
   const context = useContext(UserContext);
@@ -45,7 +44,8 @@ export default function AdmNavbar() {
         <img
           height={'100vh'}
           onClick={() => navigate('/adm/UserPerfil')}
-          src={returnImageLink(user?.image || '')}
+          onDoubleClick={() => navigate('/adm/TRASH')}
+          src={user?.image || ''}
           style={{ cursor: 'pointer', borderRadius: '10px' }}
         />
 
@@ -75,7 +75,7 @@ export default function AdmNavbar() {
             <div style={{ width: '100%' }}>
               <button
                 onClick={() => navigate('/adm/UserCreate')}
-                style={{ width: '100%' }}
+                style={{ width: '100%', fontSize: '12px' }}
               >
                 CREATE USERS
               </button>
@@ -84,7 +84,7 @@ export default function AdmNavbar() {
             <div style={{ width: '100%' }}>
               <button
                 onClick={() => navigate('/adm/UserUpdate')}
-                style={{ width: '100%' }}
+                style={{ width: '100%', fontSize: '12px' }}
               >
                 UPDATE USERS
               </button>
@@ -93,7 +93,7 @@ export default function AdmNavbar() {
             <div style={{ width: '100%' }}>
               <button
                 onClick={() => navigate('/adm/CourseCreate')}
-                style={{ width: '100%' }}
+                style={{ width: '100%', fontSize: '12px' }}
               >
                 CREATE CURSOS
               </button>
@@ -102,7 +102,7 @@ export default function AdmNavbar() {
             <div style={{ width: '100%' }}>
               <button
                 onClick={() => navigate('/adm/CourseUpdate')}
-                style={{ width: '100%' }}
+                style={{ width: '100%', fontSize: '12px' }}
               >
                 UPDATE CURSOS
               </button>
@@ -110,19 +110,28 @@ export default function AdmNavbar() {
 
             <div style={{ width: '100%' }}>
               <button
-                onClick={() => navigate('/adm/CollaboratorCreate')}
-                style={{ width: '100%' }}
+                onClick={() => navigate('/adm/CollaboratorUpdate')}
+                style={{ width: '100%', fontSize: '12px' }}
               >
-                CREATE COLLABORATORS
+                UPDATE COLLABORATORS
               </button>
             </div>
 
             <div style={{ width: '100%' }}>
               <button
-                onClick={() => navigate('/adm/CollaboratorUpdate')}
-                style={{ width: '100%' }}
+                onClick={() => navigate('/adm/TicketsCreate')}
+                style={{ width: '100%', fontSize: '12px' }}
               >
-                UPDATE COLLABORATORS
+                CREATE TICKETS
+              </button>
+            </div>
+
+            <div style={{ width: '100%' }}>
+              <button
+                onClick={() => navigate('/adm/TicketsSearch')}
+                style={{ width: '100%', fontSize: '12px' }}
+              >
+                FIND TICKETS
               </button>
             </div>
           </div>

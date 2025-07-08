@@ -7,13 +7,11 @@ import {
 import { UpdateCourseType } from './CourseUpdateComp';
 
 export default function QuestionOptionsUpdate({
-  examIndex,
   questionIndex,
   control,
   register,
   errors,
 }: {
-  examIndex: number;
   questionIndex: number;
   control: Control<UpdateCourseType>;
   register: UseFormRegister<UpdateCourseType>;
@@ -25,7 +23,7 @@ export default function QuestionOptionsUpdate({
     remove: removeQuestionOption,
   } = useFieldArray({
     control,
-    name: `exams.${examIndex}.questions.${questionIndex}.questionOptions`,
+    name: `exam.questions.${questionIndex}.questionOptions`,
   });
 
   function addNewExam() {
@@ -64,11 +62,11 @@ export default function QuestionOptionsUpdate({
               placeholder="Titulo"
               style={{ width: '100%' }}
               {...register(
-                `exams.${examIndex}.questions.${questionIndex}.questionOptions.${index}.answer`,
+                `exam.questions.${questionIndex}.questionOptions.${index}.answer`,
               )}
             />
             <p style={{ color: 'red' }}>
-              {errors.exams?.[examIndex]?.questions?.[index]?.question?.message}
+              {errors.exam?.questions?.[index]?.question?.message}
             </p>
           </div>
 
@@ -76,7 +74,7 @@ export default function QuestionOptionsUpdate({
             <input
               type="checkbox"
               {...register(
-                `exams.${examIndex}.questions.${questionIndex}.questionOptions.${index}.isAnswer`,
+                `exam.questions.${questionIndex}.questionOptions.${index}.isAnswer`,
               )}
             />
           </div>

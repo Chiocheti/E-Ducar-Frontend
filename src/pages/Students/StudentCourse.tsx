@@ -1,13 +1,16 @@
-import { useContext, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { StudentContext } from '../../contexts/StudentContext';
-import { ApiResponse } from '../../types/ApiTypes';
-import { api } from '../../services/api';
-import StudentNavbar from '../../components/StudentNavbar';
-import { RegistrationType } from '../../types/RegistrationTypes';
-import ReactPlayer from 'react-player';
-import { LessonProgressType } from '../../types/LessonProgressTypes';
 import moment from 'moment';
+import ReactPlayer from 'react-player';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useContext, useEffect, useState } from 'react';
+
+import { api } from '../../services/api';
+import { StudentContext } from '../../contexts/StudentContext';
+
+import StudentNavbar from '../../components/StudentNavbar';
+
+import { ApiResponse } from '../../types/ApiTypes';
+import { RegistrationType } from '../../types/RegistrationTypes';
+import { LessonProgressType } from '../../types/LessonProgressTypes';
 
 export default function StudentCourse() {
   const context = useContext(StudentContext);
@@ -19,24 +22,25 @@ export default function StudentCourse() {
   const { registrationId } = useParams();
   if (!registrationId) navigate('/student/perfil');
 
-  const [registration, setRegistration] = useState<RegistrationType | null>(
+  const [courseName, setCourseName] = useState<string>('');
+
+  const [currentLesson, setCurrentLesson] = useState<LessonProgressType | null>(
     null,
   );
-
-  const [lessonProgress, setLessonProgress] =
-    useState<LessonProgressType | null>(null);
-  const [lessonNumber, setLessonNumber] = useState<number>(0);
+  const [lessonList, setLessonList] = useState<LessonProgressType[]>([]);
 
   const [isPlayerReady, setIsPlayerReady] = useState<boolean>(false);
 
-  useEffect(() => {
-    async function getData() {
+  const concludeLesson = useCallback(
+    async (id: string, watchedAt: string) => {
+      const lessonProgress = { watchedAt };
+
       try {
         const {
           data: { success, type, data },
-        } = await api.post<ApiResponse>(
-          '/registrations/getById',
-          { registrationId },
+        } = await api.put<ApiResponse>(
+          '/registrations/updateLessonProgress',
+          { id, lessonProgress },
           {
             headers: {
               'x-access-token': tokens?.accessToken,
@@ -56,39 +60,20 @@ export default function StudentCourse() {
               return console.log(data);
           }
         }
-
-        const registrationData: RegistrationType = JSON.parse(data);
-
-        if (!registrationData) return navigate('/student/perfil');
-        if (!registrationData.lessonsProgress) return false;
-
-        setRegistration(registrationData);
-
-        const progress = registrationData.lessonsProgress.find(
-          (progress) => progress.watchedAt === null,
-        );
-
-        if (progress) {
-          const index = registrationData.lessonsProgress.indexOf(progress);
-          setLessonNumber(index);
-        }
-
-        setLessonProgress(progress || registrationData.lessonsProgress[0]);
       } catch (error) {
         console.log(error);
       }
-    }
+    },
+    [tokens],
+  );
 
-    getData();
-  }, [tokens, registrationId, navigate]);
-
-  async function updateRegistration() {
+  const getRegistration = useCallback(async () => {
     try {
       const {
         data: { success, type, data },
       } = await api.post<ApiResponse>(
         '/registrations/getById',
-        { registrationId },
+        { registrationId, lessonProgress: true },
         {
           headers: {
             'x-access-token': tokens?.accessToken,
@@ -100,98 +85,109 @@ export default function StudentCourse() {
         switch (type) {
           case 1:
             console.log(JSON.parse(data));
-            return console.log('Houve um erro interno');
+            console.log('Houve um erro interno');
+            return null;
           case 2:
             console.log(JSON.parse(data));
-            return console.log('Houve um erro interno');
+            console.log('Houve um erro interno');
+            return null;
           case 3:
-            return console.log(data);
+            console.log(data);
+            return null;
         }
       }
 
-      const parsedData: RegistrationType = JSON.parse(data);
+      const registrationData: RegistrationType = JSON.parse(data);
 
-      setRegistration(parsedData);
+      if (!registrationData || !registrationData?.lessonsProgress) {
+        navigate('/student/perfil');
+        return null;
+      }
+
+      return registrationData;
     } catch (error) {
       console.log(error);
+      return null;
     }
-  }
+  }, [navigate, registrationId, tokens]);
 
-  async function onEnd() {
-    if (!lessonProgress) return false;
+  useEffect(() => {
+    async function setData() {
+      const registration = await getRegistration();
 
-    if (!lessonProgress.watchedAt) {
-      const newLessonProgress = {
-        watchedAt: moment().format('YYYY-MM-DD HH:mm:ss'),
-      };
-
-      try {
-        const {
-          data: { success, type, data },
-        } = await api.post<ApiResponse>(
-          '/registrations/updateLessonProgress',
-          { id: lessonProgress.id, lessonProgress: newLessonProgress },
-          {
-            headers: {
-              'x-access-token': tokens?.accessToken,
-            },
-          },
-        );
-
-        if (!success) {
-          switch (type) {
-            case 1:
-              console.log(JSON.parse(data));
-              return console.log('Houve um erro interno');
-            case 2:
-              console.log(JSON.parse(data));
-              return console.log('Houve um erro interno');
-            case 3:
-              return console.log(data);
-          }
-        }
-
-        updateRegistration();
-      } catch (error) {
-        console.log(error);
+      if (!registration?.lessonsProgress || !registration?.course) {
+        navigate('/student/perfil');
+        return null;
       }
+
+      const { lessonsProgress, course } = registration;
+
+      let lastWatched = lessonsProgress.findLast((p) => p.watchedAt);
+
+      if (!lastWatched) {
+        const now = moment().format('YYYY-MM-DD HH:mm:ss');
+
+        lastWatched = { ...lessonsProgress[0], watchedAt: now };
+
+        await concludeLesson(lastWatched.id, now);
+
+        lessonsProgress[0] = lastWatched;
+      }
+
+      setCourseName(course.name);
+      setLessonList(lessonsProgress);
+      setCurrentLesson(lastWatched);
     }
 
-    if (lessonNumber + 1 === registration?.lessonsProgress?.length) {
-      return navigate(`/student/exam/${registrationId}`);
-    }
+    setData();
+  }, [getRegistration, navigate, concludeLesson]);
 
-    if (registration?.lessonsProgress) {
-      const next = registration?.lessonsProgress[lessonNumber + 1];
-      setLessonProgress(next);
-    }
-
+  async function goTo(newLesson: LessonProgressType) {
     setIsPlayerReady(false);
-    setLessonNumber((prev) => prev + 1);
+
+    let updateLesson = newLesson;
+
+    if (!newLesson.watchedAt) {
+      const now = moment().format('YYYY-MM-DD HH:mm:ss');
+      await concludeLesson(newLesson.id, now);
+
+      updateLesson = { ...newLesson, watchedAt: now };
+
+      setLessonList((prevList) =>
+        prevList.map((lesson) =>
+          lesson.id === updateLesson.id ? updateLesson : lesson,
+        ),
+      );
+    }
+
+    setCurrentLesson(updateLesson);
   }
 
-  function changeLesson(newProgress: LessonProgressType | null, index: number) {
-    console.log(newProgress);
-    console.log(index);
+  function onVideoEnd() {
+    if (!currentLesson) return false;
 
-    setLessonProgress(newProgress);
-    setLessonNumber(index);
+    const currentIndex = lessonList.findIndex(
+      (lesson) => lesson.id === currentLesson.id,
+    );
+
+    const nextLesson = lessonList[currentIndex + 1];
+
+    if (nextLesson) {
+      goTo(nextLesson);
+    }
   }
 
   function onPlayerReady() {
     setIsPlayerReady(true);
   }
 
-  return (
+  return currentLesson && lessonList ? (
     <div>
       <StudentNavbar />
 
-      {registration && lessonProgress && (
-        <h2 style={{ margin: '0px', marginTop: '22vh' }}>
-          {registration.course?.name} - {lessonNumber + 1}){' '}
-          {lessonProgress.lesson?.title}
-        </h2>
-      )}
+      <h2 style={{ margin: '0px', marginTop: '22vh' }}>
+        {courseName} - {currentLesson.lesson?.title}
+      </h2>
 
       <div style={{ display: 'flex', margin: '0px' }}>
         <div style={{ width: '70vw', height: '80vh' }}>
@@ -206,51 +202,46 @@ export default function StudentCourse() {
 
           <div style={{ display: isPlayerReady ? 'inline' : 'none' }}>
             <ReactPlayer
-              url={`https://www.youtube.com/embed/${lessonProgress?.lesson?.videoLink}`}
+              url={`https://www.youtube.com/embed/${currentLesson?.lesson?.videoLink}`}
               width={'640px'}
               height={'360px'}
               controls
-              onEnded={onEnd}
+              onEnded={onVideoEnd}
               onReady={onPlayerReady}
               playing
             />
           </div>
 
           <div>
-            <p>{lessonProgress?.lesson?.description}</p>
+            <p>{currentLesson?.lesson?.description}</p>
           </div>
         </div>
 
         <div style={{ width: '30vw' }}>
-          {registration?.lessonsProgress &&
-            registration?.lessonsProgress.map((progress, index) => (
-              <button
-                key={progress.id}
-                disabled={
-                  !progress.watchedAt &&
-                  progress !==
-                    registration.lessonsProgress?.find(
-                      (e) => e.watchedAt === null,
-                    )
+          {lessonList.map((progress) => (
+            <button
+              key={progress.id}
+              style={{
+                width: '100%',
+                backgroundColor: !progress.watchedAt ? '#adadad' : 'green',
+              }}
+              onClick={() => {
+                if (progress.id !== currentLesson.id) {
+                  goTo(progress);
                 }
-                onClick={() => changeLesson(progress || null, index)}
-                style={{
-                  width: index === lessonNumber ? '50%' : '100%',
-                  backgroundColor:
-                    !progress.watchedAt &&
-                    progress !==
-                      registration.lessonsProgress?.find(
-                        (e) => e.watchedAt === null,
-                      )
-                      ? '#adadad'
-                      : 'green',
-                }}
-              >
-                <h5>{progress.lesson?.title}</h5>
-              </button>
-            ))}
+              }}
+            >
+              <h5>{progress.lesson?.title}</h5>
+            </button>
+          ))}
         </div>
       </div>
+
+      {lessonList.every((lesson) => lesson.watchedAt !== null) ? (
+        <button onClick={() => navigate(`/student/exam/${registrationId}`)}>
+          Fazer Prova
+        </button>
+      ) : null}
     </div>
-  );
+  ) : null;
 }

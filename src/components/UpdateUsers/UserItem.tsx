@@ -1,5 +1,4 @@
 import { UserType } from '../../types/UserTypes';
-import { returnImageLink } from '../../utils/ReturnImageLink';
 
 export default function UserItem({
   user,
@@ -14,7 +13,7 @@ export default function UserItem({
         <p>Nome: {user.name}</p>
       </div>
 
-      <img width={'50px'} src={returnImageLink(user?.image)} />
+      <img width={'50px'} src={user?.image} />
     </div>
   );
 }

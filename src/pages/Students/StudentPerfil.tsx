@@ -1,14 +1,19 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm } from 'react-hook-form';
-import * as yup from 'yup';
-import { api } from '../../services/api';
-import { ApiResponse } from '../../types/ApiTypes';
 import { useContext, useEffect, useRef, useState } from 'react';
-import { StudentContext } from '../../contexts/StudentContext';
-import { returnImageLink } from '../../utils/ReturnImageLink';
-import StudentNavbar from '../../components/StudentNavbar';
-import moment from 'moment';
 import { useNavigate } from 'react-router-dom';
+import imageCompression from 'browser-image-compression';
+import moment from 'moment';
+import * as yup from 'yup';
+
+import { api } from '../../services/api';
+import { StudentContext } from '../../contexts/StudentContext';
+
+import { RegistrationType } from '../../types/RegistrationTypes';
+import { StudentType } from '../../types/StudentTypes';
+import { ApiResponse } from '../../types/ApiTypes';
+
+import StudentNavbar from '../../components/StudentNavbar';
 
 const updateStudentSchema = yup.object({
   name: yup.string().required('Campo obrigatório'),
@@ -25,10 +30,10 @@ export default function StudentPerfil() {
   const { student, tokens, updateStudent } = context;
 
   const [preview, setPreview] = useState<string | null>(null);
+  const [registrations, setRegistrations] = useState<RegistrationType[]>([]);
 
   const navigate = useNavigate();
 
-  const imageLink = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -47,17 +52,63 @@ export default function StudentPerfil() {
     setValue('email', student.email);
     setValue('phone', student.phone);
 
-    setPreview(returnImageLink(student.image));
-    imageLink.current = student.image;
-  }, [tokens, student, setValue]);
+    setPreview(student.image);
+  }, [student, setValue]);
+
+  useEffect(() => {
+    async function getStudent() {
+      try {
+        const {
+          data: { success, type, data },
+        } = await api.post<ApiResponse>(
+          '/students/getById',
+          { id: student?.id, registrations: true },
+          {
+            headers: {
+              'x-access-token': tokens?.accessToken,
+            },
+          },
+        );
+
+        if (!success) {
+          switch (type) {
+            case 1:
+              console.log(JSON.parse(data));
+              return console.log('Houve um erro interno');
+            case 2:
+              console.log(JSON.parse(data));
+              return console.log('Houve um erro interno');
+            case 3:
+              return console.log(data);
+          }
+        }
+
+        const parsedData: StudentType = JSON.parse(data);
+
+        setRegistrations(parsedData.registrations || []);
+      } catch (error) {
+        return console.log(error);
+      }
+    }
+
+    getStudent();
+  }, [student, tokens]);
 
   async function updateStudentData(updatedStudent: UpdateStudentType) {
+    const { password, ...newStudent } = updatedStudent;
+
     try {
       const {
         data: { success, type, data },
       } = await api.put<ApiResponse>(
         '/students/update',
-        { id: student?.id, student: updatedStudent },
+        {
+          id: student?.id,
+          student: {
+            ...newStudent,
+            ...(password && { password }),
+          },
+        },
         {
           headers: {
             'x-access-token': tokens?.accessToken,
@@ -86,12 +137,12 @@ export default function StudentPerfil() {
     }
   }
 
-  async function updateImage(newImage: File | null) {
+  async function updateImage(newImage: File) {
     if (!newImage) return console.log('Voce precisa escolher uma imagem');
 
     const formData = new FormData();
     formData.append('image', newImage);
-    formData.append('imageLink', imageLink.current || '');
+    formData.append('imageLink', preview?.slice(-36) || '');
     formData.append('studentId', student?.id || '');
 
     try {
@@ -127,9 +178,21 @@ export default function StudentPerfil() {
   }
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    };
+
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      updateImage(file);
+      console.log(`originalFile size ${file.size / 1024 / 1024} MB`);
+      const compressedFile = await imageCompression(file, options);
+      console.log(
+        `compressedFile size ${compressedFile.size / 1024 / 1024} MB`,
+      );
+
+      updateImage(compressedFile);
     }
   }
 
@@ -140,14 +203,14 @@ export default function StudentPerfil() {
       <h3 style={{ marginTop: '20vh' }}>Meus Cursos</h3>
 
       <div style={{ display: 'flex' }}>
-        {student?.registrations &&
-          student?.registrations.map((registration) => (
+        {registrations &&
+          registrations.map((registration) => (
             <div key={registration.id} style={{ border: '1px solid blue' }}>
               <img
                 width={'100px'}
                 src={
                   registration.course?.image
-                    ? returnImageLink(registration.course?.image)
+                    ? registration.course?.image
                     : 'https://placehold.co/130x130?text=FOTO'
                 }
                 style={{ cursor: 'pointer' }}

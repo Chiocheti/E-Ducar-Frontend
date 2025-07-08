@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { returnImageLink } from '../../utils/ReturnImageLink';
+
 import { UserContext } from '../../contexts/UserContext';
 import { api } from '../../services/api';
 import { CourseType } from '../../types/CourseTypes';
@@ -54,7 +54,7 @@ export default function CourseItem({
   return (
     <div>
       <img
-        src={returnImageLink(course.image)}
+        src={course.image}
         style={{
           height: '200px',
           width: '200px',

@@ -1,7 +1,6 @@
 import { useContext } from 'react';
 import { StudentContext } from '../contexts/StudentContext';
 import { useNavigate } from 'react-router-dom';
-import { returnImageLink } from '../utils/ReturnImageLink';
 
 export default function StudentNavbar() {
   const context = useContext(StudentContext);
@@ -53,7 +52,7 @@ export default function StudentNavbar() {
           onClick={() => navigate('/student/perfil')}
           src={
             student?.image
-              ? returnImageLink(student.image)
+              ? student.image
               : 'https://placehold.co/130x130?text=FOTO'
           }
           style={{ cursor: 'pointer', borderRadius: '10px' }}

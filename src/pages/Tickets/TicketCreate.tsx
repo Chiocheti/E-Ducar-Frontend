@@ -7,14 +7,23 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import * as XLSX from 'xlsx';
+import AdmNavbar from '../../components/AdmNavbar';
 
 const createTicketsSchema = yup.object({
-  quantity: yup.number().required('Campo obrigatório'),
-  collaboratorId: yup.string(),
+  quantity: yup
+    .number()
+    .required('Campo obrigatório')
+    .typeError('Digite um numero maior do que 0')
+    .min(1, 'Digite um numero maior do que 0'),
+  collaboratorId: yup.string().required('Selecione um colaborador'),
 });
 
 type CreateTicketsType = yup.InferType<typeof createTicketsSchema>;
-type SaveTicketsArray = { code: string; used: boolean }[];
+type SaveTicketsArray = {
+  collaboratorId: string | null;
+  code: string;
+  used: boolean;
+}[];
 
 export default function TicketCreate() {
   const context = useContext(UserContext);
@@ -58,7 +67,12 @@ export default function TicketCreate() {
     getData();
   }, [tokens]);
 
-  const { reset, register, handleSubmit } = useForm({
+  const {
+    reset,
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
     resolver: yupResolver(createTicketsSchema),
     defaultValues: {
       collaboratorId: '',
@@ -131,8 +145,16 @@ export default function TicketCreate() {
     return result;
   }
 
-  function createTicket(input: string) {
-    let result = input;
+  function createTicket(code: string) {
+    let result = '';
+
+    if (code !== '0') {
+      result = code;
+      while (result.length < 4) {
+        result = '0' + result;
+      }
+    }
+
     while (result.length < 16) {
       result += Math.floor(Math.random() * 10).toString();
     }
@@ -142,17 +164,23 @@ export default function TicketCreate() {
   function createTickets(data: CreateTicketsType) {
     const { quantity, collaboratorId } = data;
 
+    const collaborator = collaborators.find((e) => e.id === collaboratorId);
+
     const tickets: string[][] = [];
     const ticketsObj: SaveTicketsArray = [];
     const uniqueTickets = new Set<string>();
 
     for (let index = 1; index <= quantity; index++) {
-      let ticket = createTicket(collaboratorId || '');
+      let ticket = createTicket(collaborator?.code.toString() || '');
       while (uniqueTickets.has(ticket)) {
         ticket = createTicket(collaboratorId || '');
       }
       tickets.push(formatTicket(ticket));
-      ticketsObj.push({ code: ticket, used: false });
+      ticketsObj.push({
+        collaboratorId: collaboratorId || null,
+        code: ticket,
+        used: false,
+      });
       uniqueTickets.add(ticket);
     }
 
@@ -164,19 +192,27 @@ export default function TicketCreate() {
 
   return (
     <div>
+      <AdmNavbar />
+
       <h1>Criando Cupons</h1>
 
       <label>Colaborador</label>
       <select {...register('collaboratorId')}>
-        <option value={''}>Sem Colaborador</option>
+        <option value={''} disabled>
+          Selecione um Colaborador
+        </option>
         {collaborators.map((collaborator) => (
-          <option key={collaborator.id} value={collaborator.code}>
+          <option key={collaborator.id} value={collaborator.id}>
             {collaborator.name}
           </option>
         ))}
       </select>
+      <p style={{ color: 'red' }}>{errors.collaboratorId?.message}</p>
+
       <label>Quantidade</label>
       <input type="number" {...register('quantity')} />
+      <p style={{ color: 'red' }}>{errors.quantity?.message}</p>
+
       <button onClick={handleSubmit(createTickets)}>Criar</button>
     </div>
   );

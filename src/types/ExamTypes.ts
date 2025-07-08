@@ -5,6 +5,5 @@ export type ExamType = {
   courseId: string;
   title: string;
   description: string;
-  order: number;
   questions?: QuestionType[];
 };

@@ -46,8 +46,6 @@ export default function UserLogin() {
           return console.log(data);
       }
     }
-
-    console.log('Deu certo');
   }
 
   return !isLoading ? (

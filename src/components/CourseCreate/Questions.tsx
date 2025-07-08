@@ -8,12 +8,10 @@ import { CreateCourseType } from '../../pages/Courses/CourseCreate';
 import QuestionOptions from './QuestionsOptions';
 
 export default function Questions({
-  examIndex,
   control,
   register,
   errors,
 }: {
-  examIndex: number;
   control: Control<CreateCourseType>;
   register: UseFormRegister<CreateCourseType>;
   errors: FieldErrors<CreateCourseType>;
@@ -24,7 +22,7 @@ export default function Questions({
     remove: removeQuestion,
   } = useFieldArray({
     control,
-    name: `exams.${examIndex}.questions`,
+    name: `exam.questions`,
   });
 
   function addNewQuestion() {
@@ -68,20 +66,16 @@ export default function Questions({
                 type="text"
                 placeholder="Pergunta"
                 style={{ width: '100%' }}
-                {...register(`exams.${examIndex}.questions.${index}.question`)}
+                {...register(`exam.questions.${index}.question`)}
               />
               <p style={{ color: 'red' }}>
-                {
-                  errors.exams?.[examIndex]?.questions?.[index]?.question
-                    ?.message
-                }
+                {errors.exam?.questions?.[index]?.question?.message}
               </p>
             </div>
           </div>
 
           <div>
             <QuestionOptions
-              examIndex={examIndex}
               questionIndex={index}
               control={control}
               register={register}

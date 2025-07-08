@@ -7,13 +7,15 @@ import {
   useMemo,
   useState,
 } from 'react';
+import moment from 'moment';
 import { useNavigate } from 'react-router-dom';
+
 import { ApiResponse } from '../types/ApiTypes';
 import { api } from '../services/api';
+
 import { StudentContextType } from '../types/StudentContextTypes';
 import { StudentType } from '../types/StudentTypes';
 import { TokensType } from '../types/TokensTypes';
-import moment from 'moment';
 
 export const StudentContext = createContext<StudentContextType | null>(null);
 
@@ -82,8 +84,6 @@ export function StudentProvider({ children }: { children: ReactNode }) {
           JSON.stringify({ student: findStudent, tokens: findTokens }),
         );
 
-        console.log(findStudent);
-
         navigate('/student/registration');
 
         return { success, type, data: 'Login feito com sucesso' };
@@ -133,7 +133,7 @@ export function StudentProvider({ children }: { children: ReactNode }) {
         data: { success, type, data },
       } = await api.post<ApiResponse>(
         '/students/getById',
-        { id: student?.id },
+        { id: student?.id, registrations: false },
         {
           headers: {
             'x-access-token': tokens?.accessToken,

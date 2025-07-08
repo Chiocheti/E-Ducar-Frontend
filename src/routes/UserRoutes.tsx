@@ -9,6 +9,8 @@ import Private from './UserPrivate';
 import CollaboratorsCreate from '../pages/Collaborators/CollaboratorsCreate';
 import CollaboratorsUpdate from '../pages/Collaborators/CollaboratorsUpdate';
 import TicketCreate from '../pages/Tickets/TicketCreate';
+import TicketSearch from '../pages/Tickets/TicketSearch';
+import UserTrash from '../pages/Users/UserTrash';
 
 export default function UserRoutes() {
   return (
@@ -83,6 +85,24 @@ export default function UserRoutes() {
         element={
           <Private>
             <TicketCreate />
+          </Private>
+        }
+      />
+
+      <Route
+        path="/TicketsSearch"
+        element={
+          <Private>
+            <TicketSearch />
+          </Private>
+        }
+      />
+
+      <Route
+        path="/TRASH"
+        element={
+          <Private>
+            <UserTrash />
           </Private>
         }
       />
