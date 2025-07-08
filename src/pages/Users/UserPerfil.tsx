@@ -1,12 +1,16 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
-import { useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+
+import imageCompression from 'browser-image-compression';
+
 import { UserContext } from '../../contexts/UserContext';
 import { api } from '../../services/api';
-import { ApiResponse } from '../../types/ApiTypes';
+
 import AdmNavbar from '../../components/AdmNavbar';
-import { returnImageLink } from '../../utils/ReturnImageLink';
+
+import { ApiResponse } from '../../types/ApiTypes';
 
 const updateUserSchema = yup.object({
   name: yup.string().required('Campo obrigatório'),
@@ -24,7 +28,6 @@ export default function UserPerfil() {
 
   const [preview, setPreview] = useState<string | null>(null);
 
-  const imageLink = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -38,25 +41,17 @@ export default function UserPerfil() {
     resolver: yupResolver(updateUserSchema),
   });
 
-  useEffect(() => {
+  const setUserValues = useCallback(() => {
     if (!user) return;
     setValue('name', user?.name);
     setValue('username', user?.username);
     setValue('isTeacher', user?.isTeacher);
-    setPreview(returnImageLink(user?.image));
-    imageLink.current = user.image;
-    return;
-  }, [tokens, user, setValue]);
+    setPreview(user?.image);
+  }, [setValue, user]);
 
-  function update() {
-    if (!user) return;
-    setValue('name', user?.name);
-    setValue('username', user?.username);
-    setValue('isTeacher', user?.isTeacher);
-    setPreview(returnImageLink(user?.image));
-    imageLink.current = user.image;
-    return;
-  }
+  useEffect(() => {
+    setUserValues();
+  }, [setUserValues]);
 
   async function updateUserData(createUser: UpdateUserType) {
     if (!tokens) {
@@ -66,8 +61,8 @@ export default function UserPerfil() {
     const newUser: {
       name: string;
       username: string;
-      password?: string | null;
       isTeacher: boolean;
+      password?: string;
     } = {
       name: createUser.name,
       username: createUser.username,
@@ -84,7 +79,11 @@ export default function UserPerfil() {
       } = await api.put<ApiResponse>(
         '/users/update',
         { user: newUser, id: user?.id },
-        { headers: { 'x-access-token': tokens?.accessToken } },
+        {
+          headers: {
+            'x-access-token': tokens?.accessToken,
+          },
+        },
       );
 
       if (!success) {
@@ -102,23 +101,22 @@ export default function UserPerfil() {
 
       reset();
       updateUser();
-      update();
+
       return console.log(data);
     } catch (error) {
       return console.log(error);
     }
   }
 
-  async function updateImage(newImage: File | null) {
-    if (!tokens)
-      return console.log('Voce não tem permissão de editar um Usuario');
-
+  async function updateImage(newImage: File) {
     if (!newImage) return console.log('Voce precisa escolher uma imagem');
+    if (!user?.id) return console.log('Houve um erro de contexto');
+    if (!preview) return console.log('Imagem antiga não encontrada');
 
     const formData = new FormData();
     formData.append('image', newImage);
-    formData.append('imageLink', imageLink.current || '');
-    formData.append('userId', user?.id || '');
+    formData.append('imageLink', preview?.slice(-36));
+    formData.append('userId', user.id);
 
     try {
       const {
@@ -144,9 +142,7 @@ export default function UserPerfil() {
       }
 
       updateUser();
-      update();
-      reset();
-      setPreview(null);
+
       return console.log(data);
     } catch (error) {
       return console.log(error);
@@ -154,9 +150,21 @@ export default function UserPerfil() {
   }
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    };
+
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      updateImage(file);
+      console.log(`originalFile size ${file.size / 1024 / 1024} MB`);
+      const compressedFile = await imageCompression(file, options);
+      console.log(
+        `compressedFile size ${compressedFile.size / 1024 / 1024} MB`,
+      );
+
+      updateImage(compressedFile);
     }
   }
 

@@ -6,7 +6,7 @@ import { UserContext } from '../../contexts/UserContext';
 import { api } from '../../services/api';
 import AdmNavbar from '../../components/AdmNavbar';
 import UserItem from '../../components/UpdateUsers/UserItem';
-import { returnImageLink } from '../../utils/ReturnImageLink';
+
 import { ApiResponse } from '../../types/ApiTypes';
 import { UserType } from '../../types/UserTypes';
 
@@ -114,7 +114,7 @@ export default function UserUpdate() {
     setValue('name', user.name);
     setValue('username', user.username);
     setValue('isTeacher', user.isTeacher);
-    setPreview(returnImageLink(user?.image));
+    setPreview(user?.image);
     imageLink.current = user.image;
   }
 

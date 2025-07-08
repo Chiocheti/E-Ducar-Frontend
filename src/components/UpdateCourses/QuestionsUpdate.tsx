@@ -8,12 +8,10 @@ import { UpdateCourseType } from './CourseUpdateComp';
 import QuestionOptionsUpdate from './QuestionOptionsUpdate';
 
 export default function QuestionsUpdate({
-  examIndex,
   control,
   register,
   errors,
 }: {
-  examIndex: number;
   control: Control<UpdateCourseType>;
   register: UseFormRegister<UpdateCourseType>;
   errors: FieldErrors<UpdateCourseType>;
@@ -24,7 +22,7 @@ export default function QuestionsUpdate({
     remove: removeQuestion,
   } = useFieldArray({
     control,
-    name: `exams.${examIndex}.questions`,
+    name: `exam.questions`,
   });
 
   function addNewQuestion() {
@@ -64,20 +62,16 @@ export default function QuestionsUpdate({
                 type="text"
                 placeholder="Pergunta"
                 style={{ width: '100%' }}
-                {...register(`exams.${examIndex}.questions.${index}.question`)}
+                {...register(`exam.questions.${index}.question`)}
               />
               <p style={{ color: 'red' }}>
-                {
-                  errors.exams?.[examIndex]?.questions?.[index]?.question
-                    ?.message
-                }
+                {errors.exam?.questions?.[index]?.question?.message}
               </p>
             </div>
           </div>
 
           <div>
             <QuestionOptionsUpdate
-              examIndex={examIndex}
               questionIndex={index}
               control={control}
               register={register}

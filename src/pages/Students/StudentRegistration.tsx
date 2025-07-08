@@ -49,7 +49,11 @@ export default function StudentRegistration() {
     getData();
   }, [tokens]);
 
-  async function subscribe(courseId: string, support: number) {
+  async function subscribe(
+    courseId: string,
+    ticket: string | null,
+    support: number,
+  ) {
     try {
       const registration = {
         studentId: student?.id,
@@ -62,7 +66,7 @@ export default function StudentRegistration() {
         data: { success, type, data },
       } = await api.post<ApiResponse>(
         '/registrations/create',
-        { registration },
+        { registration, ticket },
         {
           headers: {
             'x-access-token': tokens?.accessToken,

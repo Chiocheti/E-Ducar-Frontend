@@ -16,5 +16,5 @@ export type CourseType = {
   price: number;
   user?: UserType;
   lessons?: LessonType[];
-  exams?: ExamType[];
+  exam: ExamType;
 };

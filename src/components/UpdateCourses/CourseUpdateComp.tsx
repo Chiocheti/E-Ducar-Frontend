@@ -2,11 +2,14 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useContext, useEffect, useRef, useState } from 'react';
-import { UserContext } from '../../contexts/UserContext';
+import imageCompression from 'browser-image-compression';
+
 import { api } from '../../services/api';
+import { UserContext } from '../../contexts/UserContext';
+
 import { ApiResponse } from '../../types/ApiTypes';
 import { CourseType } from '../../types/CourseTypes';
-import { returnImageLink } from '../../utils/ReturnImageLink';
+
 import LessonsUpdate from './LessonsUpdate';
 import ExamsUpdate from './ExamsUpdate';
 
@@ -38,32 +41,29 @@ const updateCourseSchema = yup.object({
       videoLink: yup.string().required('Campo Obrigatório'),
     }),
   ),
-  exams: yup.array().of(
-    yup.object().shape({
-      id: yup.string(),
-      courseId: yup.string(),
-      title: yup.string().required('Campo Obrigatório'),
-      description: yup.string().required('Campo Obrigatório'),
-      order: yup.number(),
-      questions: yup.array().of(
-        yup.object().shape({
-          id: yup.string(),
-          examId: yup.string(),
-          question: yup.string().required('Campo Obrigatório'),
-          order: yup.number(),
-          questionOptions: yup.array().of(
-            yup.object().shape({
-              id: yup.string(),
-              questionId: yup.string(),
-              answer: yup.string().required('Campo Obrigatório'),
-              isAnswer: yup.boolean().required('Campo Obrigatório'),
-              order: yup.number(),
-            }),
-          ),
-        }),
-      ),
-    }),
-  ),
+  exam: yup.object().shape({
+    id: yup.string(),
+    courseId: yup.string(),
+    title: yup.string().required('Campo Obrigatório'),
+    description: yup.string().required('Campo Obrigatório'),
+    questions: yup.array().of(
+      yup.object().shape({
+        id: yup.string(),
+        examId: yup.string(),
+        question: yup.string().required('Campo Obrigatório'),
+        order: yup.number(),
+        questionOptions: yup.array().of(
+          yup.object().shape({
+            id: yup.string(),
+            questionId: yup.string(),
+            answer: yup.string().required('Campo Obrigatório'),
+            isAnswer: yup.boolean().required('Campo Obrigatório'),
+            order: yup.number(),
+          }),
+        ),
+      }),
+    ),
+  }),
 });
 
 export type UpdateCourseType = yup.InferType<typeof updateCourseSchema>;
@@ -87,7 +87,6 @@ export default function CourseUpdateComp({
   const [teachers, setTeachers] = useState<TeacherList[]>([]);
   const [preview, setPreview] = useState<string | null>(null);
 
-  const imageLink = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -128,54 +127,18 @@ export default function CourseUpdateComp({
   const {
     register,
     handleSubmit,
-    reset,
     setValue,
     getValues,
     control,
     formState: { errors },
   } = useForm<UpdateCourseType>({
     resolver: yupResolver(updateCourseSchema),
-    defaultValues: {
-      userId: '',
-      name: '',
-      description: '',
-      text: '',
-      required: '',
-      duration: '',
-      support: 3,
-      price: 0,
-      lessons: [
-        {
-          title: '',
-          description: '',
-          videoLink: '',
-          order: 0,
-        },
-      ],
-      exams: [
-        {
-          title: '',
-          description: '',
-          order: 0,
-          questions: [
-            {
-              question: '',
-              order: 0,
-              questionOptions: [
-                {
-                  answer: '',
-                  isAnswer: false,
-                  order: 0,
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    },
   });
 
   useEffect(() => {
+    const {
+      exam: { questions },
+    } = course;
     setValue('id', course.id);
     setValue('userId', course.userId);
     setValue('name', course.name);
@@ -185,25 +148,20 @@ export default function CourseUpdateComp({
     setValue('duration', course.duration);
     setValue('support', course.support);
     setValue('price', course.price);
-    setTimeout(() => {
-      setValue('lessons', course.lessons);
-      setValue('exams', course.exams);
-    }, 1);
+    setValue('lessons', course.lessons);
+    setValue('exam', course.exam);
+    setValue('exam.questions', questions);
 
-    setPreview(returnImageLink(course.image));
-    imageLink.current = course.image;
+    setPreview(course.image);
   }, [setValue, course]);
 
   async function updateCourse(newCourse: UpdateCourseType) {
-    const { lessons, exams, ...rest } = newCourse;
+    const { lessons, exam, ...rest } = newCourse;
 
-    exams?.forEach((exam, index) => {
-      exam.order = index;
-      exam.questions?.forEach((question, index2) => {
-        question.order = index2;
-        question.questionOptions?.forEach((option, index3) => {
-          option.order = index3;
-        });
+    exam.questions?.forEach((question, index2) => {
+      question.order = index2;
+      question.questionOptions?.forEach((option, index3) => {
+        option.order = index3;
       });
     });
 
@@ -216,12 +174,14 @@ export default function CourseUpdateComp({
       return;
     }
 
+    const updateCourse = { ...rest, lessons, exam };
+
     try {
       const {
         data: { success, type, data },
       } = await api.put<ApiResponse>(
         '/courses/update',
-        { course: { ...rest, lessons, exams }, id: getValues('id') },
+        { course: updateCourse, id: course.id },
         {
           headers: {
             'x-access-token': tokens?.accessToken,
@@ -242,9 +202,6 @@ export default function CourseUpdateComp({
         }
       }
 
-      reset();
-      setPreview(null);
-      console.log(data);
       actualizeList();
       return;
     } catch (error) {
@@ -254,14 +211,12 @@ export default function CourseUpdateComp({
   }
 
   async function updateCourseImage(newImage: File | null) {
-    if (!tokens)
-      return console.log('Voce não tem permissão de editar um Curso');
-
     if (!newImage) return console.log('Voce precisa escolher uma imagem');
+    if (!preview) return console.log('Imagem Antiga não encontrada');
 
     const formData = new FormData();
     formData.append('image', newImage);
-    formData.append('imageLink', imageLink.current || '');
+    formData.append('imageLink', preview?.slice(-36));
     formData.append('id', getValues('id'));
 
     try {
@@ -287,8 +242,6 @@ export default function CourseUpdateComp({
         }
       }
 
-      reset();
-      setPreview(null);
       actualizeList();
       return console.log(data);
     } catch (error) {
@@ -297,9 +250,21 @@ export default function CourseUpdateComp({
   }
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    };
+
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      updateCourseImage(file);
+      console.log(`originalFile size ${file.size / 1024 / 1024} MB`);
+      const compressedFile = await imageCompression(file, options);
+      console.log(
+        `compressedFile size ${compressedFile.size / 1024 / 1024} MB`,
+      );
+
+      updateCourseImage(compressedFile);
     }
   }
 

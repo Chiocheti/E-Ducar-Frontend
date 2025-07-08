@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { UserContext } from '../../contexts/UserContext';
 import AdmNavbar from '../../components/AdmNavbar';
 import CourseItem from '../../components/UpdateCourses/CourseItem';
@@ -15,42 +15,7 @@ export default function CourseUpdate() {
   const [courses, setCourses] = useState<CourseType[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<CourseType | null>(null);
 
-  useEffect(() => {
-    async function getData() {
-      try {
-        const {
-          data: { success, type, data },
-        } = await api.get<ApiResponse>('/courses/getAll', {
-          headers: {
-            'x-access-token': tokens?.accessToken,
-          },
-        });
-
-        if (!success) {
-          switch (type) {
-            case 1:
-              console.log(JSON.parse(data));
-              return console.log('Houve um erro interno');
-            case 2:
-              console.log(JSON.parse(data));
-              return console.log('Houve um erro interno');
-            case 3:
-              return console.log(data);
-          }
-        }
-
-        const parsedCourses: CourseType[] = JSON.parse(data);
-
-        setCourses(parsedCourses);
-      } catch (error) {
-        console.log(error);
-      }
-    }
-
-    getData();
-  }, [tokens]);
-
-  async function actualizeList() {
+  const getAllCourses = useCallback(async () => {
     try {
       const {
         data: { success, type, data },
@@ -73,13 +38,21 @@ export default function CourseUpdate() {
         }
       }
 
-      const parsedData: CourseType[] = JSON.parse(data);
+      const parsedCourses: CourseType[] = JSON.parse(data);
 
-      setSelectedCourse(null);
-      setCourses(parsedData);
+      setCourses(parsedCourses);
     } catch (error) {
       console.log(error);
     }
+  }, [tokens]);
+
+  useEffect(() => {
+    getAllCourses();
+  }, [getAllCourses]);
+
+  async function actualizeList() {
+    getAllCourses();
+    setSelectedCourse(null);
   }
 
   return (

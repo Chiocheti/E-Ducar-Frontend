@@ -1,13 +1,14 @@
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import imageCompression from 'browser-image-compression';
 import { useContext, useEffect, useRef, useState } from 'react';
 import { UserContext } from '../../contexts/UserContext';
 import { ApiResponse } from '../../types/ApiTypes';
 import { api } from '../../services/api';
 import AdmNavbar from '../../components/AdmNavbar';
 import Lessons from '../../components/CourseCreate/Lessons';
-import Exams from '../../components/CourseCreate/Exams';
+import Exam from '../../components/CourseCreate/Exam';
 
 const createCourseSchema = yup.object({
   userId: yup.string().required('Campo Obrigatório'),
@@ -34,26 +35,23 @@ const createCourseSchema = yup.object({
       order: yup.number(),
     }),
   ),
-  exams: yup.array().of(
-    yup.object().shape({
-      title: yup.string().required('Campo Obrigatório'),
-      description: yup.string().required('Campo Obrigatório'),
-      order: yup.number(),
-      questions: yup.array().of(
-        yup.object().shape({
-          question: yup.string().required('Campo Obrigatório'),
-          order: yup.number(),
-          questionOptions: yup.array().of(
-            yup.object().shape({
-              answer: yup.string().required('Campo Obrigatório'),
-              isAnswer: yup.boolean().required('Campo Obrigatório'),
-              order: yup.number(),
-            }),
-          ),
-        }),
-      ),
-    }),
-  ),
+  exam: yup.object().shape({
+    title: yup.string().required('Campo Obrigatório'),
+    description: yup.string().required('Campo Obrigatório'),
+    questions: yup.array().of(
+      yup.object().shape({
+        question: yup.string().required('Campo Obrigatório'),
+        order: yup.number(),
+        questionOptions: yup.array().of(
+          yup.object().shape({
+            answer: yup.string().required('Campo Obrigatório'),
+            isAnswer: yup.boolean().required('Campo Obrigatório'),
+            order: yup.number(),
+          }),
+        ),
+      }),
+    ),
+  }),
 });
 
 export type CreateCourseType = yup.InferType<typeof createCourseSchema>;
@@ -127,34 +125,6 @@ export default function CourseCreate() {
       duration: '',
       support: 3,
       price: 0,
-      lessons: [
-        {
-          title: '',
-          description: '',
-          videoLink: '',
-          order: 0,
-        },
-      ],
-      exams: [
-        {
-          title: '',
-          description: '',
-          order: 0,
-          questions: [
-            {
-              question: '',
-              order: 0,
-              questionOptions: [
-                {
-                  answer: '',
-                  isAnswer: false,
-                  order: 0,
-                },
-              ],
-            },
-          ],
-        },
-      ],
     },
   });
 
@@ -164,13 +134,10 @@ export default function CourseCreate() {
       lesson.order = index;
     });
 
-    newCourse.exams?.forEach((exam, index) => {
-      exam.order = index;
-      exam.questions?.forEach((question, index2) => {
-        question.order = index2;
-        question.questionOptions?.forEach((option, index3) => {
-          option.order = index3;
-        });
+    newCourse.exam.questions?.forEach((question, index2) => {
+      question.order = index2;
+      question.questionOptions?.forEach((option, index3) => {
+        option.order = index3;
       });
     });
 
@@ -218,14 +185,30 @@ export default function CourseCreate() {
   }
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    };
+
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setImage(file);
+
+      console.log(`originalFile size ${file.size / 1024 / 1024} MB`);
+
+      const compressedFile = await imageCompression(file, options);
+
+      console.log(
+        `compressedFile size ${compressedFile.size / 1024 / 1024} MB`,
+      );
+
+      setImage(compressedFile);
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(compressedFile);
     }
   }
 
@@ -382,7 +365,7 @@ export default function CourseCreate() {
 
       <div style={{ width: '100%' }}>
         <div>
-          {<Exams control={control} register={register} errors={errors} />}
+          {<Exam control={control} register={register} errors={errors} />}
         </div>
       </div>
     </div>

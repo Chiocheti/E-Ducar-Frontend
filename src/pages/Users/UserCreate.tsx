@@ -2,6 +2,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { useContext, useRef, useState } from 'react';
+import imageCompression from 'browser-image-compression';
 import { UserContext } from '../../contexts/UserContext';
 import { api } from '../../services/api';
 import { ApiResponse } from '../../types/ApiTypes';
@@ -89,14 +90,28 @@ export default function UserCreate() {
   }
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    };
+
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      setImage(file);
+      console.log(`originalFile size ${file.size / 1024 / 1024} MB`);
+
+      const compressedFile = await imageCompression(file, options);
+
+      console.log(
+        `compressedFile size ${compressedFile.size / 1024 / 1024} MB`,
+      );
+
+      setImage(compressedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result as string);
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(compressedFile);
     }
   }
 
